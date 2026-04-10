@@ -133,10 +133,10 @@ Read the daily log above and compile it into wiki articles following the schema 
         async for message in query(
             prompt=prompt,
             options=ClaudeAgentOptions(
-                cwd=str(ROOT_DIR),
+                cwd=str(Path(__file__).resolve().parent.parent.parent.parent),  # project root, outside .claude/
                 system_prompt={"type": "preset", "preset": "claude_code"},
                 allowed_tools=["Read", "Write", "Edit", "Glob", "Grep"],
-                permission_mode="acceptEdits",
+                permission_mode="bypassPermissions",
                 max_turns=30,
             ),
         ):

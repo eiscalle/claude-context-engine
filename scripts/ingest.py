@@ -185,7 +185,7 @@ architectural patterns.
 - When multiple source files cover the same topic, the resulting article should
   SYNTHESIZE all of them, not just reflect the latest one
 
-### File paths:
+### File paths (use these EXACT paths):
 - Write concept articles to: {CONCEPTS_DIR}
 - Write connection articles to: {CONNECTIONS_DIR}
 - Update index at: {KNOWLEDGE_DIR / 'index.md'}
@@ -194,14 +194,16 @@ architectural patterns.
 
     cost = 0.0
 
+    from config import PROJECT_ROOT
+
     try:
         async for message in query(
             prompt=prompt,
             options=ClaudeAgentOptions(
-                cwd=str(ROOT_DIR),
+                cwd=str(PROJECT_ROOT),
                 system_prompt={"type": "preset", "preset": "claude_code"},
                 allowed_tools=["Read", "Write", "Edit", "Glob", "Grep"],
-                permission_mode="acceptEdits",
+                permission_mode="bypassPermissions",
                 max_turns=30,
             ),
         ):
