@@ -97,6 +97,7 @@ def load_sources_config() -> list[SourceGroup]:
 
 def resolve_source_files(group: SourceGroup, root: Path | None = None) -> list[Path]:
     """Expand include globs and subtract exclude globs. Returns sorted unique paths."""
+    import fnmatch
     from config import ROOT_DIR
 
     base = root or ROOT_DIR
@@ -106,13 +107,24 @@ def resolve_source_files(group: SourceGroup, root: Path | None = None) -> list[P
             if match.is_file():
                 included.add(match.resolve())
 
-    excluded: set[Path] = set()
-    for pattern in group.exclude:
-        for match in base.glob(pattern):
-            if match.is_file():
-                excluded.add(match.resolve())
+    # Exclude patterns are matched against filenames (not re-globbed from root)
+    # because include paths often escape the base dir via ../../ and re-globbing
+    # from root wouldn't find those files.
+    if group.exclude:
+        filtered: set[Path] = set()
+        for fpath in included:
+            skip = False
+            for pattern in group.exclude:
+                # Strip leading **/ for fnmatch against filename
+                pat = pattern.lstrip("*").lstrip("/")
+                if fnmatch.fnmatch(fpath.name, pat):
+                    skip = True
+                    break
+            if not skip:
+                filtered.add(fpath)
+        included = filtered
 
-    return sorted(included - excluded)
+    return sorted(included)
 
 
 def migrate_state_schema(state: dict) -> dict:
