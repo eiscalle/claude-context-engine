@@ -65,6 +65,8 @@ def extract_fallback_truth(content: str) -> str:
     parts: list[str] = []
 
     # 1. Intro paragraph — everything before the first ## heading
+    #    For connection articles this is empty (title immediately followed by ##),
+    #    so we also check for "The Connection" section as an intro equivalent.
     lines = body.split("\n")
     intro_lines: list[str] = []
     for line in lines:
@@ -74,15 +76,24 @@ def extract_fallback_truth(content: str) -> str:
             break
         intro_lines.append(line)
     intro = "\n".join(intro_lines).strip()
+    if not intro:
+        # Connection articles: "## The Connection" serves as the intro
+        intro = extract_section(body, "The Connection") or ""
     if intro:
         parts.append(intro)
 
-    # 2. Key Points section
+    # 2. Key Points / Key Insight section
     key_points = extract_section(body, "Key Points")
+    if not key_points:
+        # Connection articles use "Key Insight" instead of "Key Points"
+        key_points = extract_section(body, "Key Insight")
     if key_points:
         parts.append(f"### Key Points\n\n{key_points}")
     else:
         details = extract_section(body, "Details")
+        if not details:
+            # Connection articles use "Evidence" instead of "Details"
+            details = extract_section(body, "Evidence")
         if details:
             words = details.split()
             truncated = " ".join(words[:200])
@@ -100,7 +111,7 @@ def extract_fallback_truth(content: str) -> str:
 
 def extract_section(body: str, heading: str) -> str | None:
     """Extract content under a ## or ### heading, up to the next same-or-higher heading."""
-    pattern = rf"^#{2,3}\s+{re.escape(heading)}\s*\n"
+    pattern = rf"^#{{2,3}}\s+{re.escape(heading)}\s*\n"
     match = re.search(pattern, body, re.MULTILINE)
     if not match:
         return None
