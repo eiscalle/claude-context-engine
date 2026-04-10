@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 # ── Paths ──────────────────────────────────────────────────────────────
 ROOT_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = ROOT_DIR.parent.parent  # AiTutor project root (outside .claude/)
-DAILY_DIR = ROOT_DIR / "daily"
+DAILY_DIR = KNOWLEDGE_DIR / "daily"
 # Knowledge base lives at project root so the Agent SDK can write to it
 # (Claude Code blocks writes inside .claude/ even with bypassPermissions)
 KNOWLEDGE_DIR = PROJECT_ROOT / "knowledge"
