@@ -225,6 +225,16 @@ def main():
     print(f"\nCompilation complete. Total cost: ${total_cost:.2f}")
     print(f"Knowledge base: {len(articles)} articles")
 
+    # Notify (non-fatal if it fails)
+    try:
+        from notify import notify
+        notify(
+            "Context Engine",
+            f"Compile: ${total_cost:.2f} ({len(to_compile)} files) | KB: {len(articles)} articles",
+        )
+    except Exception:
+        pass
+
 
 if __name__ == "__main__":
     main()
