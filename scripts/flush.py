@@ -111,8 +111,11 @@ def update_wip_file(wip_content: str) -> None:
     WIP_FILE.write_text(header + wip_content + "\n", encoding="utf-8")
 
 
-async def run_flush(context: str) -> str:
-    """Use Claude Agent SDK to extract important knowledge from conversation context."""
+async def run_flush(context: str) -> tuple[str, float]:
+    """Use Claude Agent SDK to extract important knowledge from conversation context.
+
+    Returns (response_text, cost_usd).
+    """
     from claude_agent_sdk import (
         AssistantMessage,
         ClaudeAgentOptions,
@@ -161,6 +164,7 @@ respond with exactly: FLUSH_OK
 {context}"""
 
     response = ""
+    cost = 0.0
 
     try:
         async for message in query(
@@ -176,13 +180,13 @@ respond with exactly: FLUSH_OK
                     if isinstance(block, TextBlock):
                         response += block.text
             elif isinstance(message, ResultMessage):
-                pass
+                cost = message.total_cost_usd or 0.0
     except Exception as e:
         import traceback
         logging.error("Agent SDK error: %s\n%s", e, traceback.format_exc())
         response = f"FLUSH_ERROR: {type(e).__name__}: {e}"
 
-    return response
+    return response, cost
 
 
 COMPILE_AFTER_HOUR = 18  # 6 PM local time
@@ -235,6 +239,18 @@ def maybe_trigger_compilation() -> None:
         logging.error("Failed to spawn compile.py: %s", e)
 
 
+def _today_flush_total(state: dict) -> float:
+    """Sum flush costs from today."""
+    today_start = datetime.now(timezone.utc).astimezone().replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ).timestamp()
+    return sum(
+        entry.get("cost_usd", 0.0)
+        for entry in state.get("flush_costs", [])
+        if entry.get("timestamp", 0) >= today_start
+    )
+
+
 def main():
     if len(sys.argv) < 3:
         logging.error("Usage: %s <context_file.md> <session_id>", sys.argv[0])
@@ -269,7 +285,7 @@ def main():
     logging.info("Flushing session %s: %d chars", session_id, len(context))
 
     # Run the LLM extraction
-    response = asyncio.run(run_flush(context))
+    response, flush_cost = asyncio.run(run_flush(context))
 
     # Append to daily log
     if "FLUSH_OK" in response:
@@ -296,14 +312,38 @@ def main():
             except OSError as e:
                 logging.error("Failed to write wip.md: %s", e)
 
-    # Update dedup state
-    save_flush_state({"session_id": session_id, "timestamp": time.time()})
+    # Update dedup state + cost tracking
+    state = load_flush_state()
+    state["session_id"] = session_id
+    state["timestamp"] = time.time()
+    flush_costs = state.get("flush_costs", [])
+    flush_costs.append({
+        "session_id": session_id,
+        "timestamp": time.time(),
+        "cost_usd": flush_cost,
+        "result": "FLUSH_OK" if "FLUSH_OK" in response else ("error" if "FLUSH_ERROR" in response else "saved"),
+    })
+    state["flush_costs"] = flush_costs
+    save_flush_state(state)
+
+    # Notify
+    try:
+        from notify import notify
+        today_total = _today_flush_total(state)
+        result_label = "FLUSH_OK" if "FLUSH_OK" in response else "saved"
+        notify(
+            "Context Engine",
+            f"Flush: ${flush_cost:.2f} ({result_label}) | Today flushes: ${today_total:.2f}",
+        )
+    except Exception as e:
+        logging.debug("Notification failed: %s", e)
 
     # Clean up context file
     context_file.unlink(missing_ok=True)
 
     # End-of-day auto-compilation: if it's past the compile hour and today's
     # log hasn't been compiled yet, trigger compile.py in the background.
+    # Safe now that compile.py uses index-only context (O(1) per file).
     maybe_trigger_compilation()
 
     logging.info("Flush complete for session %s", session_id)
