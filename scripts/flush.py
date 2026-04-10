@@ -18,6 +18,7 @@ os.environ["CLAUDE_INVOKED_BY"] = "memory_flush"
 import asyncio
 import json
 import logging
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -28,6 +29,7 @@ DAILY_DIR = ROOT / "daily"
 SCRIPTS_DIR = ROOT / "scripts"
 STATE_FILE = SCRIPTS_DIR / "last-flush.json"
 LOG_FILE = SCRIPTS_DIR / "flush.log"
+WIP_FILE = ROOT / "wip.md"
 
 # Set up file-based logging so we can verify the background process ran.
 # The parent process sends stdout/stderr to DEVNULL (to avoid the inherited
@@ -72,6 +74,43 @@ def append_to_daily_log(content: str, section: str = "Session") -> None:
         f.write(entry)
 
 
+# Matches a **Heading:** bold section at the start of a line. Used to scope
+# the Work In Progress extraction so inline **bold** inside the body doesn't
+# prematurely terminate the match.
+_WIP_SECTION_RE = re.compile(
+    r"\*\*Work In Progress:\*\*\s*(.*?)(?=\n\*\*[A-Z][\w /&-]*:\*\*|\Z)",
+    re.DOTALL,
+)
+
+_WIP_EMPTY_MARKERS = {"", "(none)", "none", "n/a", "-", "—"}
+
+
+def extract_wip_section(response: str) -> str | None:
+    """Pull the **Work In Progress:** block out of the flush response.
+
+    Returns None if the section is missing, empty, or explicitly marked as
+    having nothing in flight — in which case the caller should leave the
+    existing wip.md alone (last known state remains the source of truth).
+    """
+    match = _WIP_SECTION_RE.search(response)
+    if not match:
+        return None
+    content = match.group(1).strip()
+    if content.lower() in _WIP_EMPTY_MARKERS:
+        return None
+    return content
+
+
+def update_wip_file(wip_content: str) -> None:
+    """Rewrite wip.md (not append) with the latest resume-here snapshot."""
+    today = datetime.now(timezone.utc).astimezone()
+    header = (
+        "# Work In Progress\n\n"
+        f"_Last updated: {today.strftime('%Y-%m-%d %H:%M %Z').strip()}_\n\n"
+    )
+    WIP_FILE.write_text(header + wip_content + "\n", encoding="utf-8")
+
+
 async def run_flush(context: str) -> str:
     """Use Claude Agent SDK to extract important knowledge from conversation context."""
     from claude_agent_sdk import (
@@ -101,6 +140,13 @@ Format your response as a structured daily log entry with these sections:
 
 **Action Items:**
 - [Follow-ups or TODOs mentioned]
+
+**Work In Progress:**
+- [If the session ended mid-task, describe the current resume-here state:
+  which file/function was being edited, which branch, what's half-done,
+  and the exact next concrete step to pick up. Keep it tight — 3-6 bullets max.]
+- [OMIT this section entirely if the session wrapped as a complete unit of
+  work with nothing in flight. Do not invent WIP that isn't there.]
 
 Skip anything that is:
 - Routine tool calls or file reads
@@ -237,6 +283,18 @@ def main():
     else:
         logging.info("Result: saved to daily log (%d chars)", len(response))
         append_to_daily_log(response, "Session")
+
+        # Update wip.md only when the flush surfaced real in-flight work.
+        # Clean-wrapped sessions leave the previous wip.md intact so the
+        # resume-here file always reflects the last known WIP, never gets
+        # clobbered to empty just because the latest session had nothing pending.
+        wip = extract_wip_section(response)
+        if wip:
+            try:
+                update_wip_file(wip)
+                logging.info("Updated wip.md (%d chars)", len(wip))
+            except OSError as e:
+                logging.error("Failed to write wip.md: %s", e)
 
     # Update dedup state
     save_flush_state({"session_id": session_id, "timestamp": time.time()})

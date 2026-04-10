@@ -26,9 +26,11 @@ ROOT = Path(__file__).resolve().parent.parent
 KNOWLEDGE_DIR = ROOT / "knowledge"
 DAILY_DIR = ROOT / "daily"
 INDEX_FILE = KNOWLEDGE_DIR / "index.md"
+WIP_FILE = ROOT / "wip.md"
 
 MAX_CONTEXT_CHARS = 20_000
 MAX_LOG_LINES = 30
+MAX_WIP_CHARS = 2_000
 
 
 def get_recent_log() -> str:
@@ -47,6 +49,18 @@ def get_recent_log() -> str:
     return "(no recent daily log)"
 
 
+def get_wip() -> str | None:
+    """Read wip.md if it exists and has content. Returns None if absent/empty."""
+    if not WIP_FILE.exists():
+        return None
+    content = WIP_FILE.read_text(encoding="utf-8").strip()
+    if not content:
+        return None
+    if len(content) > MAX_WIP_CHARS:
+        content = content[:MAX_WIP_CHARS] + "\n\n...(truncated)"
+    return content
+
+
 def build_context() -> str:
     """Assemble the context to inject into the conversation."""
     parts = []
@@ -54,6 +68,13 @@ def build_context() -> str:
     # Today's date
     today = datetime.now(timezone.utc).astimezone()
     parts.append(f"## Today\n{today.strftime('%A, %B %d, %Y')}")
+
+    # Work In Progress — "resume here" state from the last session that
+    # ended mid-task. Placed second so Claude sees it immediately after
+    # the date, before the larger knowledge base index.
+    wip = get_wip()
+    if wip:
+        parts.append(f"## Work In Progress (resume here)\n\n{wip}")
 
     # Knowledge base index (the core retrieval mechanism)
     if INDEX_FILE.exists():
