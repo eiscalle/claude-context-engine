@@ -1,0 +1,43 @@
+# sources.yaml — declares what this project's brain should ingest.
+# Copy this to sources.yaml and customize for your project.
+#
+# All paths are relative to the memory-compiler root directory.
+# Use ../../ to escape into the parent project root.
+#
+# Run: uv run python scripts/ingest.py
+# Dry run: uv run python scripts/ingest.py --dry-run
+
+version: 1
+
+sources:
+  # Design specs — brainstorming skill output
+  - id: design-specs
+    type: markdown
+    include:
+      - "../../docs/superpowers/specs/*.md"
+    exclude: []
+    category: design-specs
+    description: "Project design specs written via brainstorming skill"
+
+  # Project governance — CLAUDE.md, rules, product context
+  - id: project-governance
+    type: markdown
+    include:
+      - "../../.claude/CLAUDE.md"
+      - "../../.claude/rules/*.md"
+      - "../../.claude/product-marketing-context.md"
+    category: governance
+    description: "Project-wide coding rules, product context, CLAUDE.md"
+
+  # Auto-memory from past Claude Code sessions
+  # Requires a symlink: .claude/memory/ -> actual memory dir
+  #   Windows: mklink /J .claude\memory %USERPROFILE%\.claude\projects\<slug>\memory
+  #   Mac/Linux: ln -s ~/.claude/projects/<slug>/memory .claude/memory
+  - id: captured-memory
+    type: markdown
+    include:
+      - "../../.claude/memory/*.md"
+    exclude:
+      - "**/*MEMORY.md"
+    category: captured-memory
+    description: "Persistent auto-memory from past Claude Code sessions"
