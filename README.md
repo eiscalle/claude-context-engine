@@ -14,6 +14,9 @@ Forked from [coleam00/claude-memory-compiler](https://github.com/coleam00/claude
 | **Handler system** | None | Pluggable handlers (markdown built-in, PDF/URL planned) |
 | **Resume-here state** | None | `wip.md` extracted from sessions, injected on start |
 | **Drop zone** | None | `sources/articles/`, `sources/notes/`, `sources/pdfs/` |
+| **Compiled Truth** | None | Zero-cost `compiled-truth.md` — all facts in one file, included in every prompt |
+| **Truth + Timeline format** | Single-zone articles | Articles split into Truth (facts) and Timeline (provenance) |
+| **O(1) prompt cost** | O(n) — all articles dumped into prompt | Index + compiled truth — fixed cost regardless of KB size |
 | **Knowledge location** | Inside `.claude/` | Project root (`knowledge/`) -- Claude Code blocks writes inside `.claude/` |
 | **Exclude patterns** | Broken for external paths | Fixed (`fnmatch` against filenames) |
 | **State schema** | Flat `ingested` dict | Split `ingested_daily` + `ingested_sources` with auto-migration |
@@ -45,7 +48,12 @@ Forked from [coleam00/claude-memory-compiler](https://github.com/coleam00/claude
                                                      ▼
                                               ┌─────────────┐
                                               │ compile.py  │──► knowledge/
-                                              └─────────────┘
+                                              └──────┬──────┘
+                                                     │
+                                                     ▼
+                                              ┌──────────────────┐
+                                              │compile_truth.py  │──► compiled-truth.md
+                                              └──────────────────┘    (zero cost)
 
 
                        SOURCE INGESTION
@@ -122,11 +130,13 @@ Sessions accumulate automatically. After 6 PM, compilation triggers on next flus
 
 ```
 Conversation -> SessionEnd/PreCompact hooks -> flush.py extracts knowledge
-    -> daily/YYYY-MM-DD.md -> compile.py -> knowledge/concepts/, connections/, qa/
-        -> SessionStart hook injects index + wip.md -> cycle repeats
+    -> daily/YYYY-MM-DD.md -> compile.py -> knowledge/concepts/, connections/
+        -> compile_truth.py -> compiled-truth.md (zero cost)
+            -> SessionStart hook injects compiled truth + index + wip.md -> cycle repeats
 
 Source files -> sources.yaml -> ingest.py -> knowledge/concepts/, connections/
-    -> same index, same articles, cross-linked with session knowledge
+    -> compile_truth.py -> compiled-truth.md (zero cost)
+        -> same index, same articles, cross-linked with session knowledge
 ```
 
 - **Hooks** capture conversations automatically (session end + pre-compaction safety net)
@@ -156,6 +166,9 @@ uv run python scripts/query.py "question" --file-back  # save answer as article
 # Health checks
 uv run python scripts/lint.py                       # all checks
 uv run python scripts/lint.py --structural-only     # free structural checks only
+
+# Generate compiled truth (zero cost, pure Python)
+uv run python scripts/compile_truth.py              # regenerate compiled-truth.md
 ```
 
 ## Configuration: sources.yaml
@@ -221,7 +234,56 @@ Karpathy's insight: at personal scale (50-500 articles), the LLM reading a struc
 
 ## Cost
 
-All operations use the Claude Agent SDK on your existing Claude subscription (Max, Team, or Enterprise). No separate API credits needed.
+All operations use the [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk) on your existing Claude subscription (Max, Team, or Enterprise). No separate API key needed.
+
+### Per-operation costs
+
+| Operation | Cost | When it runs |
+|-----------|------|-------------|
+| Session flush (`flush.py`) | ~$0.01-0.05 | Every session end (automatic) |
+| Daily compilation (`compile.py`) | ~$0.30-0.80 | Once per day after 6 PM (automatic) |
+| Source ingestion (`ingest.py`) | ~$0.30-0.80/file | Manual only — you control when |
+| Compiled truth generation | **$0.00** | After every compile/ingest (pure Python) |
+| Structural lint | **$0.00** | Manual — pure Python checks |
+| Full lint (with contradictions) | ~$0.15-0.25 | Manual — uses LLM for contradiction detection |
+| Query | ~$0.15-0.40 | Manual |
+
+### Daily cost estimate
+
+With typical usage (10-15 coding sessions per day):
+
+| Component | Cost/day |
+|-----------|----------|
+| Session flushes (10-15 × ~$0.02) | $0.10-0.30 |
+| Daily compilation (1×) | $0.30-0.80 |
+| **Total automatic cost** | **$0.40-1.10/day** |
+
+Source ingestion is manual — you choose when to run it and how many files to process.
+
+### Why costs are stable
+
+The upstream `claude-memory-compiler` has a design flaw: every compile/ingest call dumps **all** existing wiki articles into the prompt. As the knowledge base grows, costs grow linearly — at 71 articles, a single ingestion cost $1.33-4.53 per file.
+
+This fork fixes that. The prompt includes:
+1. **Wiki index** (~one line per article) — grows slowly
+2. **Compiled truth** (~150 words per article) — much smaller than full articles (~800+ words each)
+3. **Tool access** (Read/Grep) — agent fetches specific articles on demand
+
+Cost per operation is approximately constant regardless of knowledge base size.
+
+## Compiled Truth
+
+Instead of dumping all articles into every prompt (expensive, O(n)) or using embeddings/RAG (complex), this fork generates a zero-cost **compiled truth** file.
+
+`compile_truth.py` reads every wiki article, extracts just the factual Truth section (~150 words per article), and concatenates them into `knowledge/compiled-truth.md`. This file is included in every compile/ingest prompt and injected into every session via the start hook.
+
+The result: the LLM sees **all current knowledge** in a compact format. At 71 articles that's ~24K words. At 500 articles, ~75K words — still within context limits. No vector database, no embeddings, no ongoing API cost.
+
+Articles use a **Truth + Timeline** format:
+- **Truth** (top): current facts, dense, machine-extractable
+- **Timeline** (bottom): provenance — when things were learned, from which sources, why decisions changed
+
+See [AGENTS.md](AGENTS.md) for the full article schema.
 
 ## Obsidian Integration
 
