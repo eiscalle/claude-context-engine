@@ -29,6 +29,7 @@ from utils import (
     save_state,
 )
 
+
 # ── Paths for the LLM to use ──────────────────────────────────────────
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
@@ -50,19 +51,6 @@ async def compile_daily_log(log_path: Path, state: dict) -> float:
     schema = AGENTS_FILE.read_text(encoding="utf-8")
     wiki_index = read_wiki_index()
 
-    # Read existing articles for context
-    existing_articles_context = ""
-    existing = {}
-    for article_path in list_wiki_articles():
-        rel = article_path.relative_to(KNOWLEDGE_DIR)
-        existing[str(rel)] = article_path.read_text(encoding="utf-8")
-
-    if existing:
-        parts = []
-        for rel_path, content in existing.items():
-            parts.append(f"### {rel_path}\n```markdown\n{content}\n```")
-        existing_articles_context = "\n\n".join(parts)
-
     timestamp = now_iso()
 
     prompt = f"""You are a knowledge compiler. Your job is to read a daily conversation log
@@ -75,10 +63,6 @@ and extract knowledge into structured wiki articles.
 ## Current Wiki Index
 
 {wiki_index}
-
-## Existing Wiki Articles
-
-{existing_articles_context if existing_articles_context else "(No existing articles yet)"}
 
 ## Daily Log to Compile
 
@@ -111,6 +95,11 @@ Read the daily log above and compile it into wiki articles following the schema 
    - Articles created: [[concepts/x]], [[concepts/y]]
    - Articles updated: [[concepts/z]] (if any)
    ```
+7. **Use tools to check existing articles** — The wiki index above lists every article
+   with its path and one-line summary. Before creating a new article, check the index
+   for duplicates or near-duplicates. To update an existing article, use the Read tool
+   to fetch it first, then Edit to modify it. Use Grep to search for related concepts
+   when adding [[wikilinks]].
 
 ### File paths:
 - Write concept articles to: {CONCEPTS_DIR}
