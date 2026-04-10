@@ -24,6 +24,7 @@ from utils import (
     list_raw_files,
     list_wiki_articles,
     load_state,
+    migrate_state_schema,
     read_wiki_index,
     save_state,
 )
@@ -152,7 +153,7 @@ Read the daily log above and compile it into wiki articles following the schema 
 
     # Update state
     rel_path = log_path.name
-    state.setdefault("ingested", {})[rel_path] = {
+    state.setdefault("ingested_daily", {})[rel_path] = {
         "hash": file_hash(log_path),
         "compiled_at": now_iso(),
         "cost_usd": cost,
@@ -171,6 +172,7 @@ def main():
     args = parser.parse_args()
 
     state = load_state()
+    state = migrate_state_schema(state)
 
     # Determine which files to compile
     if args.file:
@@ -192,7 +194,7 @@ def main():
             to_compile = []
             for log_path in all_logs:
                 rel = log_path.name
-                prev = state.get("ingested", {}).get(rel, {})
+                prev = state.get("ingested_daily", {}).get(rel, {})
                 if not prev or prev.get("hash") != file_hash(log_path):
                     to_compile.append(log_path)
 
