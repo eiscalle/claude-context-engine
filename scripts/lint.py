@@ -71,7 +71,7 @@ def check_orphan_pages() -> list[dict]:
 def check_orphan_sources() -> list[dict]:
     """Check for daily logs that haven't been compiled yet."""
     state = load_state()
-    ingested = state.get("ingested", {})
+    ingested = state.get("ingested_daily", state.get("ingested", {}))
     issues = []
     for log_path in list_raw_files():
         if log_path.name not in ingested:
@@ -87,7 +87,7 @@ def check_orphan_sources() -> list[dict]:
 def check_stale_articles() -> list[dict]:
     """Check if source daily logs have changed since compilation."""
     state = load_state()
-    ingested = state.get("ingested", {})
+    ingested = state.get("ingested_daily", state.get("ingested", {}))
     issues = []
     for log_path in list_raw_files():
         rel = log_path.name
@@ -142,6 +142,28 @@ def check_sparse_articles() -> list[dict]:
                 "file": str(rel),
                 "detail": f"Sparse article: {word_count} words (minimum recommended: 200)",
             })
+    return issues
+
+
+def check_orphan_source_files() -> list[dict]:
+    """Check for source files declared in sources.yaml that haven't been ingested."""
+    from utils import load_sources_config, resolve_source_files
+
+    state = load_state()
+    ingested_sources = state.get("ingested_sources", {})
+    issues = []
+
+    for group in load_sources_config():
+        for fpath in resolve_source_files(group):
+            key = f"{group.id}/{fpath.name}"
+            if key not in ingested_sources:
+                issues.append({
+                    "severity": "warning",
+                    "check": "orphan_source_file",
+                    "file": f"sources/{key}",
+                    "detail": f"Uningested source: {fpath.name} (group: {group.id})",
+                })
+
     return issues
 
 
@@ -263,7 +285,8 @@ def main():
     checks = [
         ("Broken links", check_broken_links),
         ("Orphan pages", check_orphan_pages),
-        ("Orphan sources", check_orphan_sources),
+        ("Orphan sources (daily)", check_orphan_sources),
+        ("Orphan sources (files)", check_orphan_source_files),
         ("Stale articles", check_stale_articles),
         ("Missing backlinks", check_missing_backlinks),
         ("Sparse articles", check_sparse_articles),
