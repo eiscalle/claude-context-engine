@@ -18,6 +18,7 @@ AGENTS_FILE = ROOT_DIR / "AGENTS.md"
 INDEX_FILE = KNOWLEDGE_DIR / "index.md"
 LOG_FILE = KNOWLEDGE_DIR / "log.md"
 STATE_FILE = SCRIPTS_DIR / "state.json"
+SOURCES_FILE = ROOT_DIR / "sources.yaml"
 
 # ── Timezone ───────────────────────────────────────────────────────────
 TIMEZONE = "America/Chicago"
