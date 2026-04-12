@@ -6,12 +6,6 @@
     "name": "Yuriy Kazantsev"
   },
   "userConfig": {
-    "data_dir": {
-      "title": "Data directory",
-      "description": "Path to knowledge base data directory (default: ~/wiki)",
-      "type": "directory",
-      "sensitive": false
-    },
     "timezone": {
       "title": "Timezone",
       "description": "Your timezone, e.g. America/Chicago, Europe/Moscow (default: America/Chicago)",

@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # ── Paths from env vars ──────────────────────────────────────────────
-_DATA_DIR = Path(os.environ.get("WIKI_DATA_DIR", str(Path(__file__).resolve().parent.parent / "data")))
+_DATA_DIR = Path(os.environ.get("WIKI_DATA_DIR", str(Path.cwd() / "wiki")))
 KNOWLEDGE_DIR = _DATA_DIR / "knowledge"
 DAILY_DIR = _DATA_DIR / "daily"
 INDEX_FILE = KNOWLEDGE_DIR / "index.md"

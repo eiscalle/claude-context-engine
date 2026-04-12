@@ -1,6 +1,13 @@
 #!/bin/bash
 # wiki-run — wrapper that sets up env vars and runs Python scripts via uv.
 # Used by hooks and skills. Placed in bin/ so the plugin system adds it to PATH.
-export WIKI_DATA_DIR="${CLAUDE_PLUGIN_OPTION_DATA_DIR:-$HOME/wiki}"
-export UV_PROJECT_ENVIRONMENT="${CLAUDE_PLUGIN_DATA}/.venv"
+
+# Resolve plugin root from this script's location (bin/ is one level deep)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+export CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(dirname "$SCRIPT_DIR")}"
+
+# Knowledge base lives at project_root/wiki (CWD)
+export WIKI_DATA_DIR="${PWD}/wiki"
+
+export UV_PROJECT_ENVIRONMENT="${CLAUDE_PLUGIN_DATA:-$CLAUDE_PLUGIN_ROOT}/.venv"
 exec uv run --project "${CLAUDE_PLUGIN_ROOT}" python "$@"

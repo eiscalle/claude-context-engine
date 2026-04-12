@@ -12,7 +12,7 @@ from pathlib import Path
 _PLUGIN_ROOT = Path(
     os.environ.get("CLAUDE_PLUGIN_ROOT", str(Path(__file__).resolve().parent.parent))
 )
-_DATA_DIR = Path(os.environ.get("WIKI_DATA_DIR", str(_PLUGIN_ROOT / "data")))
+_DATA_DIR = Path(os.environ.get("WIKI_DATA_DIR", str(Path.cwd() / "wiki")))
 
 # ── Data directories (user-configurable location) ────────────────────
 KNOWLEDGE_DIR = _DATA_DIR / "knowledge"
