@@ -24,11 +24,11 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from config import DAILY_DIR, SCRIPTS_DIR, _DATA_DIR, _PLUGIN_ROOT
+from config import DAILY_DIR, SCRIPTS_DIR, KNOWLEDGE_DIR, _STATE_DIR, _PLUGIN_ROOT
 
-STATE_FILE = _DATA_DIR / "last-flush.json"
-LOG_FILE = _DATA_DIR / "flush.log"
-WIP_FILE = _DATA_DIR / "wip.md"
+STATE_FILE = _STATE_DIR / "last-flush.json"
+LOG_FILE = _STATE_DIR / "flush.log"
+WIP_FILE = _STATE_DIR / "wip.md"
 
 # Set up file-based logging so we can verify the background process ran.
 # The parent process sends stdout/stderr to DEVNULL (to avoid the inherited
@@ -169,7 +169,7 @@ respond with exactly: FLUSH_OK
         async for message in query(
             prompt=prompt,
             options=ClaudeAgentOptions(
-                cwd=str(_DATA_DIR),
+                cwd=str(KNOWLEDGE_DIR.parent),
                 allowed_tools=[],
                 max_turns=2,
             ),
@@ -201,7 +201,7 @@ def maybe_trigger_compilation() -> None:
 
     # Check if today's log has already been compiled
     today_log = f"{now.strftime('%Y-%m-%d')}.md"
-    compile_state_file = _DATA_DIR / "state.json"
+    compile_state_file = _STATE_DIR / "state.json"
     if compile_state_file.exists():
         try:
             compile_state = json.loads(compile_state_file.read_text(encoding="utf-8"))
@@ -233,7 +233,7 @@ def maybe_trigger_compilation() -> None:
         kwargs["start_new_session"] = True
 
     try:
-        log_handle = open(str(_DATA_DIR / "compile.log"), "a")
+        log_handle = open(str(_STATE_DIR / "compile.log"), "a")
         _sp.Popen(cmd, stdout=log_handle, stderr=_sp.STDOUT, **kwargs)
     except Exception as e:
         logging.error("Failed to spawn compile.py: %s", e)

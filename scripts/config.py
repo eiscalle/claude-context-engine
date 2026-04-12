@@ -1,7 +1,8 @@
 """Path constants and configuration for the wiki plugin.
 
-All data paths resolve from WIKI_DATA_DIR env var (set by bin/wiki-run from
-userConfig). Falls back to ./data/ for local development without the plugin.
+Knowledge base (wiki/) lives at project root and is meant to be committed.
+Operational state (daily logs, flush state, etc.) lives in .claude/wiki/
+and is typically gitignored.
 """
 
 import os
@@ -12,21 +13,23 @@ from pathlib import Path
 _PLUGIN_ROOT = Path(
     os.environ.get("CLAUDE_PLUGIN_ROOT", str(Path(__file__).resolve().parent.parent))
 )
-_DATA_DIR = Path(os.environ.get("WIKI_DATA_DIR", str(Path.cwd() / "wiki")))
+_PROJECT_ROOT = Path(os.environ.get("WIKI_PROJECT_ROOT", str(Path.cwd())))
 
-# ── Data directories (user-configurable location) ────────────────────
-KNOWLEDGE_DIR = _DATA_DIR / "knowledge"
-DAILY_DIR = _DATA_DIR / "daily"
+# ── Knowledge base (committed) ───────────────────────────────────────
+KNOWLEDGE_DIR = _PROJECT_ROOT / "wiki"
 CONCEPTS_DIR = KNOWLEDGE_DIR / "concepts"
 CONNECTIONS_DIR = KNOWLEDGE_DIR / "connections"
 QA_DIR = KNOWLEDGE_DIR / "qa"
-REPORTS_DIR = _DATA_DIR / "reports"
-
-WIP_FILE = _DATA_DIR / "wip.md"
 INDEX_FILE = KNOWLEDGE_DIR / "index.md"
 LOG_FILE = KNOWLEDGE_DIR / "log.md"
-STATE_FILE = _DATA_DIR / "state.json"
-FLUSH_STATE_FILE = _DATA_DIR / "last-flush.json"
+
+# ── Operational state (gitignored, inside .claude/) ──────────────────
+_STATE_DIR = _PROJECT_ROOT / ".claude" / "wiki"
+DAILY_DIR = _STATE_DIR / "daily"
+REPORTS_DIR = _STATE_DIR / "reports"
+WIP_FILE = _STATE_DIR / "wip.md"
+STATE_FILE = _STATE_DIR / "state.json"
+FLUSH_STATE_FILE = _STATE_DIR / "last-flush.json"
 
 # ── Plugin root (read-only, ships with plugin) ───────────────────────
 SCRIPTS_DIR = _PLUGIN_ROOT / "scripts"
@@ -34,7 +37,7 @@ HOOKS_DIR = _PLUGIN_ROOT / "hooks"
 AGENTS_FILE = _PLUGIN_ROOT / "AGENTS.md"
 
 # ── Per-project config ───────────────────────────────────────────────
-SOURCES_FILE = Path.cwd() / "sources.yaml"
+SOURCES_FILE = _PROJECT_ROOT / "sources.yaml"
 
 # ── Timezone ─────────────────────────────────────────────────────────
 TIMEZONE = os.environ.get("CLAUDE_PLUGIN_OPTION_TIMEZONE", "America/Chicago")

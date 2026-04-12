@@ -6,8 +6,5 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 export CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(dirname "$SCRIPT_DIR")}"
 
-# Knowledge base lives at project_root/wiki (CWD)
-export WIKI_DATA_DIR="${PWD}/wiki"
-
 export UV_PROJECT_ENVIRONMENT="${CLAUDE_PLUGIN_DATA:-$CLAUDE_PLUGIN_ROOT}/.venv"
 exec uv run --project "${CLAUDE_PLUGIN_ROOT}" python "$@"

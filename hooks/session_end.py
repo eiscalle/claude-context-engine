@@ -23,12 +23,12 @@ if os.environ.get("CLAUDE_INVOKED_BY"):
 
 # Ensure hooks/ is on sys.path for _shared import
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _shared import _DATA_DIR, extract_conversation_context, parse_hook_stdin, spawn_flush
+from _shared import _STATE_DIR, extract_conversation_context, parse_hook_stdin, spawn_flush
 
 MIN_TURNS_TO_FLUSH = 1
 
 logging.basicConfig(
-    filename=str(_DATA_DIR / "flush.log"),
+    filename=str(_STATE_DIR / "flush.log"),
     level=logging.INFO,
     format="%(asctime)s %(levelname)s [session-end] %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",

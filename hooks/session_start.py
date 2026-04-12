@@ -12,29 +12,34 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-# ── Paths from env vars ──────────────────────────────────────────────
-_DATA_DIR = Path(os.environ.get("WIKI_DATA_DIR", str(Path.cwd() / "wiki")))
-KNOWLEDGE_DIR = _DATA_DIR / "knowledge"
-DAILY_DIR = _DATA_DIR / "daily"
+# ── Paths ────────────────────────────────────────────────────────────
+_PROJECT_ROOT = Path.cwd()
+
+# Knowledge base (committed)
+KNOWLEDGE_DIR = _PROJECT_ROOT / "wiki"
 INDEX_FILE = KNOWLEDGE_DIR / "index.md"
-WIP_FILE = _DATA_DIR / "wip.md"
 COMPILED_TRUTH_FILE = KNOWLEDGE_DIR / "compiled-truth.md"
-STATE_FILE = _DATA_DIR / "state.json"
-FLUSH_STATE_FILE = _DATA_DIR / "last-flush.json"
+
+# Operational state (gitignored, inside .claude/)
+_STATE_DIR = _PROJECT_ROOT / ".claude" / "wiki"
+DAILY_DIR = _STATE_DIR / "daily"
+WIP_FILE = _STATE_DIR / "wip.md"
+STATE_FILE = _STATE_DIR / "state.json"
+FLUSH_STATE_FILE = _STATE_DIR / "last-flush.json"
 
 MAX_CONTEXT_CHARS = 60_000
 MAX_LOG_LINES = 30
 MAX_WIP_CHARS = 2_000
 MAX_COMPILED_TRUTH_CHARS = 40_000
 
-# ── Ensure data directories exist on first run ───────────────────────
+# ── Ensure directories exist on first run ────────────────────────────
 for _d in [
     KNOWLEDGE_DIR,
     KNOWLEDGE_DIR / "concepts",
     KNOWLEDGE_DIR / "connections",
     KNOWLEDGE_DIR / "qa",
     DAILY_DIR,
-    _DATA_DIR / "reports",
+    _STATE_DIR / "reports",
 ]:
     _d.mkdir(parents=True, exist_ok=True)
 

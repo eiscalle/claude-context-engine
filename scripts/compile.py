@@ -31,7 +31,7 @@ from utils import (
 from compile_truth import compile_truth as regenerate_truth, COMPILED_TRUTH_FILE
 
 
-from config import _DATA_DIR
+from config import _PROJECT_ROOT
 
 
 async def compile_daily_log(log_path: Path, state: dict) -> float:
@@ -135,7 +135,7 @@ Read the daily log above and compile it into wiki articles following the schema 
         async for message in query(
             prompt=prompt,
             options=ClaudeAgentOptions(
-                cwd=str(_DATA_DIR),
+                cwd=str(_PROJECT_ROOT),
                 system_prompt={"type": "preset", "preset": "claude_code"},
                 allowed_tools=["Read", "Write", "Edit", "Glob", "Grep"],
                 permission_mode="bypassPermissions",
@@ -183,7 +183,7 @@ def main():
             target = DAILY_DIR / target.name
         if not target.exists():
             # Try resolving relative to data dir
-            target = _DATA_DIR / args.file
+            target = _PROJECT_ROOT / args.file
         if not target.exists():
             print(f"Error: {args.file} not found")
             sys.exit(1)

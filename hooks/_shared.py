@@ -18,7 +18,7 @@ from pathlib import Path
 _PLUGIN_ROOT = Path(
     os.environ.get("CLAUDE_PLUGIN_ROOT", str(Path(__file__).resolve().parent.parent))
 )
-_DATA_DIR = Path(os.environ.get("WIKI_DATA_DIR", str(Path.cwd() / "wiki")))
+_STATE_DIR = Path.cwd() / ".claude" / "wiki"
 
 SCRIPTS_DIR = _PLUGIN_ROOT / "scripts"
 
@@ -100,9 +100,9 @@ def spawn_flush(context: str, session_id: str, *, log_prefix: str = "hook") -> b
         return False
 
     # Write context file to data dir (writable)
-    _DATA_DIR.mkdir(parents=True, exist_ok=True)
+    _STATE_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(timezone.utc).astimezone().strftime("%Y%m%d-%H%M%S")
-    context_file = _DATA_DIR / f"flush-context-{session_id}-{timestamp}.md"
+    context_file = _STATE_DIR / f"flush-context-{session_id}-{timestamp}.md"
     context_file.write_text(context, encoding="utf-8")
 
     flush_script = SCRIPTS_DIR / "flush.py"

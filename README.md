@@ -93,25 +93,27 @@ The plugin registers four hooks — no manual configuration needed:
 | SessionEnd | Session closes | Captures transcript, spawns flush |
 | PreCompact | Before auto-compaction | Safety net — captures context before summarization |
 
-## Data Directory Structure
+## Data Layout
 
-Everything lives in your configured `data_dir` (default `~/wiki`):
+Knowledge base lives at project root (`wiki/`) and is meant to be committed. Operational state lives inside `.claude/wiki/` and is gitignored.
 
 ```
-~/wiki/
-├── knowledge/
-│   ├── index.md              # Article catalog (retrieval mechanism)
-│   ├── compiled-truth.md     # Priority-scored dense summary
-│   ├── log.md                # Build log
-│   ├── concepts/             # Atomic knowledge articles
-│   ├── connections/          # Cross-cutting insights
-│   └── qa/                   # Filed query answers
-├── daily/
-│   └── YYYY-MM-DD.md         # Conversation logs (append-only)
-├── reports/                  # Lint reports
-├── wip.md                    # Work-in-progress resume state
-├── state.json                # Compilation tracking
-└── last-flush.json           # Flush deduplication
+project/
+├── wiki/                         # Knowledge base (committed)
+│   ├── index.md                  # Article catalog (retrieval mechanism)
+│   ├── compiled-truth.md         # Priority-scored dense summary
+│   ├── log.md                    # Build log
+│   ├── concepts/                 # Atomic knowledge articles
+│   ├── connections/              # Cross-cutting insights
+│   └── qa/                       # Filed query answers
+├── .claude/
+│   └── wiki/                     # Operational state (gitignored)
+│       ├── daily/
+│       │   └── YYYY-MM-DD.md     # Conversation logs (append-only)
+│       ├── reports/              # Lint reports
+│       ├── wip.md                # Work-in-progress resume state
+│       ├── state.json            # Compilation tracking
+│       └── last-flush.json       # Flush deduplication
 ```
 
 ## Source Ingestion
