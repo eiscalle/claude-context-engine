@@ -62,15 +62,29 @@ Source files can also be ingested via `/wiki:ingest` from a project's `sources.y
 
 | Skill | What it does |
 |-------|-------------|
+| `/wiki:init` | Initialize knowledge base — explore project, create articles |
 | `/wiki:compile` | Compile daily logs into knowledge articles |
 | `/wiki:ingest` | Ingest external sources from `sources.yaml` |
 | `/wiki:query` | Query knowledge base with natural language |
 | `/wiki:lint` | Run health checks (broken links, orphans, staleness) |
 | `/wiki:cost-report` | Show API spending summary |
 
+### Getting started
+
+Run `/wiki:init` in any project. It will:
+1. Create the `wiki/` and `.claude/wiki/` directories
+2. Explore the project (structure, language, dependencies, architecture)
+3. Ask you if something is unclear
+4. Create knowledge articles for key concepts
+5. Build the index
+
+Safe to re-run — updates outdated articles without duplicating or deleting existing ones.
+
 ### Skill arguments
 
 ```bash
+/wiki:init                             # first-time setup or update
+
 /wiki:compile --all                    # force recompile everything
 /wiki:compile --file daily/2026-04-12.md
 
