@@ -7,4 +7,4 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 export CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(dirname "$SCRIPT_DIR")}"
 
 export UV_PROJECT_ENVIRONMENT="${CLAUDE_PLUGIN_DATA:-$CLAUDE_PLUGIN_ROOT}/.venv"
-exec uv run --project "${CLAUDE_PLUGIN_ROOT}" python "$@"
+exec uv run --no-env-file --project "${CLAUDE_PLUGIN_ROOT}" python "$@"
