@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "wiki",
-      "source": ".",
+      "source": "./",
       "description": "Personal AI knowledge base — captures learning from Claude Code conversations and compiles into searchable articles",
       "version": "1.0.0",
       "author": {
