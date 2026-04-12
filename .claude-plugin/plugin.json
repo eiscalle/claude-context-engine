@@ -1,7 +1,7 @@
 {
   "name": "wiki",
   "description": "Personal AI knowledge base — captures learning from Claude Code conversations and compiles into searchable articles",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": {
     "name": "Yuriy Kazantsev"
   },
