@@ -223,7 +223,8 @@ def maybe_trigger_compilation() -> None:
 
     logging.info("End-of-day compilation triggered (after %d:00)", COMPILE_AFTER_HOUR)
 
-    cmd = ["wiki-run", str(compile_script)]
+    wiki_run = str(_PLUGIN_ROOT / "bin" / "wiki-run")
+    cmd = [wiki_run, str(compile_script)]
 
     kwargs: dict = {}
     if sys.platform == "win32":

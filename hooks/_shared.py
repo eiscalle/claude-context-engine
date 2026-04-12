@@ -106,7 +106,8 @@ def spawn_flush(context: str, session_id: str, *, log_prefix: str = "hook") -> b
     context_file.write_text(context, encoding="utf-8")
 
     flush_script = SCRIPTS_DIR / "flush.py"
-    cmd = ["wiki-run", str(flush_script), str(context_file), session_id]
+    wiki_run = str(_PLUGIN_ROOT / "bin" / "wiki-run")
+    cmd = [wiki_run, str(flush_script), str(context_file), session_id]
 
     creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
