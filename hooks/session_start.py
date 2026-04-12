@@ -4,42 +4,39 @@ SessionStart hook - injects knowledge base context into every conversation.
 This is the "context injection" layer. When Claude Code starts a session,
 this hook reads the knowledge base index and recent daily log, then injects
 them as additional context so Claude always "remembers" what it has learned.
-
-Configure in .claude/settings.json:
-{
-    "hooks": {
-        "SessionStart": [{
-            "matcher": "",
-            "command": "uv run python hooks/session-start.py"
-        }]
-    }
-}
 """
 
 import json
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-# Paths relative to project root
-ROOT = Path(__file__).resolve().parent.parent
-KNOWLEDGE_DIR = ROOT / "knowledge"
-DAILY_DIR = ROOT / "daily"
+# ── Paths from env vars ──────────────────────────────────────────────
+_DATA_DIR = Path(os.environ.get("WIKI_DATA_DIR", str(Path(__file__).resolve().parent.parent / "data")))
+KNOWLEDGE_DIR = _DATA_DIR / "knowledge"
+DAILY_DIR = _DATA_DIR / "daily"
 INDEX_FILE = KNOWLEDGE_DIR / "index.md"
-WIP_FILE = ROOT / "wip.md"
+WIP_FILE = _DATA_DIR / "wip.md"
+COMPILED_TRUTH_FILE = KNOWLEDGE_DIR / "compiled-truth.md"
+STATE_FILE = _DATA_DIR / "state.json"
+FLUSH_STATE_FILE = _DATA_DIR / "last-flush.json"
 
 MAX_CONTEXT_CHARS = 60_000
 MAX_LOG_LINES = 30
 MAX_WIP_CHARS = 2_000
-# compiled-truth.md lives in the PROJECT root's knowledge/ dir (written by config.py's
-# KNOWLEDGE_DIR = PROJECT_ROOT / "knowledge"), which is two levels up from the
-# memory-compiler root. session-start.py's KNOWLEDGE_DIR points to the memory-compiler's
-# own knowledge/ dir, which is a different path.
-PROJECT_KNOWLEDGE_DIR = ROOT.parent.parent / "knowledge"
-COMPILED_TRUTH_FILE = PROJECT_KNOWLEDGE_DIR / "compiled-truth.md"
 MAX_COMPILED_TRUTH_CHARS = 40_000
-STATE_FILE = ROOT / "scripts" / "state.json"
-FLUSH_STATE_FILE = ROOT / "scripts" / "last-flush.json"
+
+# ── Ensure data directories exist on first run ───────────────────────
+for _d in [
+    KNOWLEDGE_DIR,
+    KNOWLEDGE_DIR / "concepts",
+    KNOWLEDGE_DIR / "connections",
+    KNOWLEDGE_DIR / "qa",
+    DAILY_DIR,
+    _DATA_DIR / "reports",
+]:
+    _d.mkdir(parents=True, exist_ok=True)
 
 
 def get_recent_log() -> str:

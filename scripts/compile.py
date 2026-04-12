@@ -31,8 +31,7 @@ from utils import (
 from compile_truth import compile_truth as regenerate_truth, COMPILED_TRUTH_FILE
 
 
-# ── Paths for the LLM to use ──────────────────────────────────────────
-ROOT_DIR = Path(__file__).resolve().parent.parent
+from config import _DATA_DIR
 
 
 async def compile_daily_log(log_path: Path, state: dict) -> float:
@@ -136,7 +135,7 @@ Read the daily log above and compile it into wiki articles following the schema 
         async for message in query(
             prompt=prompt,
             options=ClaudeAgentOptions(
-                cwd=str(Path(__file__).resolve().parent.parent.parent.parent),  # project root, outside .claude/
+                cwd=str(_DATA_DIR),
                 system_prompt={"type": "preset", "preset": "claude_code"},
                 allowed_tools=["Read", "Write", "Edit", "Glob", "Grep"],
                 permission_mode="bypassPermissions",
@@ -183,8 +182,8 @@ def main():
         if not target.is_absolute():
             target = DAILY_DIR / target.name
         if not target.exists():
-            # Try resolving relative to project root
-            target = ROOT_DIR / args.file
+            # Try resolving relative to data dir
+            target = _DATA_DIR / args.file
         if not target.exists():
             print(f"Error: {args.file} not found")
             sys.exit(1)

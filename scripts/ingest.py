@@ -35,7 +35,7 @@ from utils import (
 )
 from compile_truth import compile_truth as regenerate_truth, COMPILED_TRUTH_FILE
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+from config import _DATA_DIR
 
 
 def source_state_key(group: SourceGroup, file_path: Path) -> str:
@@ -197,13 +197,11 @@ architectural patterns.
 
     cost = 0.0
 
-    from config import PROJECT_ROOT
-
     try:
         async for message in query(
             prompt=prompt,
             options=ClaudeAgentOptions(
-                cwd=str(PROJECT_ROOT),
+                cwd=str(_DATA_DIR),
                 system_prompt={"type": "preset", "preset": "claude_code"},
                 allowed_tools=["Read", "Write", "Edit", "Glob", "Grep"],
                 permission_mode="bypassPermissions",

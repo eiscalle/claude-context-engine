@@ -18,10 +18,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from config import SCRIPTS_DIR
-
-STATE_FILE = SCRIPTS_DIR / "state.json"
-FLUSH_STATE_FILE = SCRIPTS_DIR / "last-flush.json"
+from config import STATE_FILE, FLUSH_STATE_FILE
 
 
 def load_json(path: Path) -> dict:

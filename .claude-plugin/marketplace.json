@@ -1,0 +1,19 @@
+{
+  "name": "claude-context-engine",
+  "owner": {
+    "name": "Yuriy Kazantsev"
+  },
+  "plugins": [
+    {
+      "name": "wiki",
+      "source": ".",
+      "description": "Personal AI knowledge base — captures learning from Claude Code conversations and compiles into searchable articles",
+      "version": "1.0.0",
+      "author": {
+        "name": "Yuriy Kazantsev"
+      },
+      "tags": ["knowledge-base", "memory", "wiki", "learning"],
+      "category": "development-workflows"
+    }
+  ]
+}

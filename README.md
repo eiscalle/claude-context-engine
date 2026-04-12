@@ -1,323 +1,204 @@
-# Claude Context Engine
+# Wiki — Claude Code Plugin
 
-**Your AI conversations + project docs compile themselves into a searchable knowledge base.**
+**Your AI conversations compile themselves into a searchable personal knowledge base.**
 
-Adapted from [Karpathy's LLM Knowledge Base](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) architecture. Unlike the original which clips web articles, this system ingests **two sources**: your Claude Code conversations (captured automatically via hooks) and your project's static files -- design specs, architecture docs, governance rules, auto-memories, and any external articles you drop into the sources folder. The [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk) extracts decisions, lessons learned, patterns, and gotchas, then compiles them into structured, cross-referenced knowledge articles. Retrieval uses a simple index file instead of RAG -- no vector database, no embeddings, just markdown.
+A Claude Code plugin that automatically captures learning from every coding session and compiles it into structured, cross-referenced knowledge articles. Uses index-guided retrieval instead of RAG — no vector database, no embeddings, just markdown and an index the LLM can reason over.
 
-Forked from [coleam00/claude-memory-compiler](https://github.com/coleam00/claude-memory-compiler) and significantly extended.
+Forked from [coleam00/claude-memory-compiler](https://github.com/coleam00/claude-memory-compiler), inspired by [Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f). Rewritten as a Claude Code plugin for one-command install and portability across all projects.
 
-## What's New vs. Upstream
+## Install
 
-| Feature | Upstream | This Fork |
-|---------|----------|-----------|
-| **Source ingestion** | Conversations only | Conversations + external files via `sources.yaml` |
-| **Handler system** | None | Pluggable handlers (markdown built-in, PDF/URL planned) |
-| **Resume-here state** | None | `wip.md` extracted from sessions, injected on start |
-| **Drop zone** | None | `sources/articles/`, `sources/notes/`, `sources/pdfs/` |
-| **Compiled Truth** | None | Zero-cost `compiled-truth.md` — all facts in one file, included in every prompt |
-| **Truth + Timeline format** | Single-zone articles | Articles split into Truth (facts) and Timeline (provenance) |
-| **Priority-scored truth** | None | Compiled truth uses recency, cross-linking, and access frequency to select top articles within a character budget |
-| **O(1) prompt cost** | O(n) — all articles dumped into prompt | Index + compiled truth — fixed cost regardless of KB size |
-| **Knowledge location** | Inside `.claude/` | Project root (`knowledge/`) -- Claude Code blocks writes inside `.claude/` |
-| **Exclude patterns** | Broken for external paths | Fixed (`fnmatch` against filenames) |
-| **State schema** | Flat `ingested` dict | Split `ingested_daily` + `ingested_sources` with auto-migration |
-| **Permission mode** | `acceptEdits` | `bypassPermissions` (required for unattended ingestion) |
-| **Auto-memory ingestion** | None | Symlink `.claude/memory/` and add to `sources.yaml` |
-
-## Architecture
-
-```
-                       SESSION LIFECYCLE
-                       =================
-
-  ┌─────────────┐     SessionStart hook      ┌──────────────────┐
-  │ Claude Code  │◄─── injects index.md ─────│ session-start.py │
-  │   session    │     + wip.md + recent log  └──────────────────┘
-  └──────┬───────┘
-         │ SessionEnd / PreCompact hook
-         ▼
-  ┌──────────────┐     background spawn      ┌─────────────┐
-  │session-end.py│──────────────────────►    │  flush.py   │
-  └──────────────┘   (detached process)       └──────┬──────┘
-                                                     │
-                                  ┌──────────────────┼──────────────────┐
-                                  ▼                  ▼                  ▼
-                           Agent SDK call    daily/YYYY-MM-DD.md   wip.md
-                           (extract knowledge)                   (resume-here)
-                                                     │
-                                                     │ after 6 PM
-                                                     ▼
-                                              ┌─────────────┐
-                                              │ compile.py  │──► knowledge/
-                                              └──────┬──────┘
-                                                     │
-                                                     ▼
-                                              ┌──────────────────┐
-                                              │compile_truth.py  │──► compiled-truth.md
-                                              └──────────────────┘    (zero cost)
-
-
-                       SOURCE INGESTION
-                       ================
-
-  sources.yaml ──► ingest.py ──► source_handlers/ ──► Agent SDK ──► knowledge/
-       │                              │
-       ├── design-specs/*.md          ├── markdown.py (built-in)
-       ├── implementation-plans/*.md  ├── pdf.py      (planned)
-       ├── governance (CLAUDE.md)     └── url.py      (planned)
-       ├── captured-memory/*.md
-       └── sources/articles/*.md
-```
-
-## Quick Start
-
-### 1. Fork and clone
+### From local directory
 
 ```bash
-git clone https://github.com/YOUR_USER/claude-context-engine .claude/memory-compiler
-cd .claude/memory-compiler
-uv sync
+git clone https://github.com/eiscalle/claude-context-engine
+claude --plugin-dir ./claude-context-engine
 ```
 
-### 2. Configure hooks
-
-Merge into your project's `.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "SessionStart": [{
-      "matcher": "",
-      "hooks": [{
-        "type": "command",
-        "command": "uv run --directory .claude/memory-compiler python .claude/memory-compiler/hooks/session-start.py",
-        "timeout": 15
-      }]
-    }],
-    "PreCompact": [{
-      "matcher": "",
-      "hooks": [{
-        "type": "command",
-        "command": "uv run --directory .claude/memory-compiler python .claude/memory-compiler/hooks/session-end.py",
-        "timeout": 10
-      }]
-    }],
-    "SessionEnd": [{
-      "matcher": "",
-      "hooks": [{
-        "type": "command",
-        "command": "uv run --directory .claude/memory-compiler python .claude/memory-compiler/hooks/session-end.py",
-        "timeout": 10
-      }]
-    }]
-  }
-}
-```
-
-### 3. Set up source ingestion
+### From marketplace
 
 ```bash
-cp sources.yaml.example sources.yaml
-# Edit sources.yaml: point globs at your project's docs, specs, memories
-uv run python scripts/ingest.py --dry-run   # preview
-uv run python scripts/ingest.py             # run
+/plugin marketplace add eiscalle/claude-context-engine
+/plugin install wiki@claude-context-engine
 ```
 
-### 4. Use it
+### Configure on first use
 
-Sessions accumulate automatically. After 6 PM, compilation triggers on next flush. Knowledge base grows with every session and every `ingest.py` run.
+When you enable the plugin, Claude Code will prompt for two settings:
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `data_dir` | Where to store the knowledge base | `~/wiki` |
+| `timezone` | Your local timezone | `America/Chicago` |
+
+The data directory will be created automatically on the first session start.
+
+### Prerequisites
+
+- [uv](https://docs.astral.sh/uv/) package manager
+- Claude Code with Agent SDK access (Max, Team, or Enterprise subscription)
 
 ## How It Works
 
 ```
-Conversation -> SessionEnd/PreCompact hooks -> flush.py extracts knowledge
-    -> daily/YYYY-MM-DD.md -> compile.py -> knowledge/concepts/, connections/
-        -> compile_truth.py -> compiled-truth.md (zero cost)
-            -> SessionStart hook injects compiled truth + index + wip.md -> cycle repeats
+Session starts  ──► session_start.py injects knowledge context
+                    (index + compiled truth + wip.md + recent log)
 
-Source files -> sources.yaml -> ingest.py -> knowledge/concepts/, connections/
-    -> compile_truth.py -> compiled-truth.md (zero cost)
-        -> same index, same articles, cross-linked with session knowledge
+Session runs    ──► you work as usual
+
+Session ends    ──► session_end.py captures transcript
+                    ──► flush.py (background) extracts knowledge ──► daily/YYYY-MM-DD.md
+                                                                 ──► wip.md (resume-here)
+                    ──► after 6 PM: compile.py auto-triggers
+                        ──► knowledge/concepts/, connections/
+                        ──► compile_truth.py ──► compiled-truth.md (zero cost)
+
+Next session    ──► cycle repeats with fresh knowledge
 ```
 
-- **Hooks** capture conversations automatically (session end + pre-compaction safety net)
-- **flush.py** extracts knowledge via Agent SDK, writes daily log + wip.md resume-here state
-- **compile.py** turns daily logs into organized concept articles with cross-references
-- **ingest.py** turns source files (specs, docs, memories, articles) into the same knowledge base
-- **query.py** answers questions using index-guided retrieval (no RAG needed at personal scale)
-- **lint.py** runs 9 health checks (broken links, orphans, contradictions, staleness, uningested sources, low-priority articles)
+Source files can also be ingested via `/wiki:ingest` from a project's `sources.yaml`.
 
-## Key Commands
+## Plugin Skills
+
+| Skill | What it does |
+|-------|-------------|
+| `/wiki:compile` | Compile daily logs into knowledge articles |
+| `/wiki:ingest` | Ingest external sources from `sources.yaml` |
+| `/wiki:query` | Query knowledge base with natural language |
+| `/wiki:lint` | Run health checks (broken links, orphans, staleness) |
+| `/wiki:cost-report` | Show API spending summary |
+
+### Skill arguments
 
 ```bash
-# Session logs -> knowledge
-uv run python scripts/compile.py                    # compile new daily logs
-uv run python scripts/compile.py --all              # force recompile
+/wiki:compile --all                    # force recompile everything
+/wiki:compile --file daily/2026-04-12.md
 
-# Source files -> knowledge
-uv run python scripts/ingest.py                     # ingest new/changed sources
-uv run python scripts/ingest.py --all               # force re-ingest everything
-uv run python scripts/ingest.py --source design-specs  # one group only
-uv run python scripts/ingest.py --dry-run --verbose
+/wiki:ingest --source design-specs     # one source group only
+/wiki:ingest --dry-run --verbose       # preview
 
-# Ask the knowledge base
-uv run python scripts/query.py "question"
-uv run python scripts/query.py "question" --file-back  # save answer as article
+/wiki:query "How do I handle auth?"
+/wiki:query "Auth patterns?" --file-back   # save answer as article
 
-# Health checks
-uv run python scripts/lint.py                       # all checks
-uv run python scripts/lint.py --structural-only     # free structural checks only
-
-# Generate compiled truth (zero cost, pure Python)
-uv run python scripts/compile_truth.py              # regenerate with priority scoring
-uv run python scripts/compile_truth.py --verbose    # show scoring breakdown
-uv run python scripts/compile_truth.py --budget 60000  # custom char budget
-uv run python scripts/compile_truth.py --all        # include everything (ignore budget)
+/wiki:lint --structural-only           # free checks only (no LLM)
 ```
 
-## Configuration: sources.yaml
+## Hooks (automatic)
+
+The plugin registers four hooks — no manual configuration needed:
+
+| Hook | Event | Action |
+|------|-------|--------|
+| SessionStart | Session begins | Injects knowledge context (~60K chars) |
+| SessionEnd | Session closes | Captures transcript, spawns flush |
+| PreCompact | Before auto-compaction | Safety net — captures context before summarization |
+
+## Data Directory Structure
+
+Everything lives in your configured `data_dir` (default `~/wiki`):
+
+```
+~/wiki/
+├── knowledge/
+│   ├── index.md              # Article catalog (retrieval mechanism)
+│   ├── compiled-truth.md     # Priority-scored dense summary
+│   ├── log.md                # Build log
+│   ├── concepts/             # Atomic knowledge articles
+│   ├── connections/          # Cross-cutting insights
+│   └── qa/                   # Filed query answers
+├── daily/
+│   └── YYYY-MM-DD.md         # Conversation logs (append-only)
+├── reports/                  # Lint reports
+├── wip.md                    # Work-in-progress resume state
+├── state.json                # Compilation tracking
+└── last-flush.json           # Flush deduplication
+```
+
+## Source Ingestion
+
+Create a `sources.yaml` in any project to ingest its documentation:
 
 ```yaml
 version: 1
 
 sources:
-  - id: design-specs           # Unique identifier
-    type: markdown             # Handler type (markdown now; pdf, url planned)
-    include:                   # Globs relative to memory-compiler root
-      - "../../docs/specs/*.md"
-    exclude:                   # Filename patterns (fnmatch)
-      - "**/*DRAFT.md"
-    category: design-specs     # Tag on generated articles
+  - id: design-specs
+    type: markdown
+    include:
+      - "docs/specs/*.md"
+    category: design-specs
     description: "Project design specs"
 
   - id: external-articles
     type: markdown
     include:
-      - "sources/articles/*.md"   # Drop zone
-      - "sources/notes/*.md"
+      - "sources/articles/*.md"
+    exclude:
+      - "**/*DRAFT.md"
     category: external
-    description: "Web clippings, research notes"
+    description: "Web clippings and research notes"
 ```
 
-### Adding a handler
+Then run `/wiki:ingest` from that project.
 
-1. Create `scripts/source_handlers/your_type.py`
-2. Define `extract(path: Path) -> SourceDocument`
-3. Call `register("your_type", extract)`
-4. Import in `scripts/source_handlers/__init__.py`
-
-## Portability
-
-Each project gets its own clone with its own `sources.yaml` and isolated `knowledge/` directory:
-
-1. Clone into `.claude/memory-compiler/`
-2. `uv sync`
-3. Copy `sources.yaml.example` -> `sources.yaml`, customize globs
-4. Merge hooks into `.claude/settings.json`
-5. `uv run python scripts/ingest.py`
-
-The `knowledge/` output lives at the **project root** (not inside `.claude/`) because Claude Code blocks Agent SDK writes inside `.claude/`.
-
-## Memory Symlink
-
-Claude Code stores auto-memory outside the project. To ingest it:
-
-```bash
-# Windows
-mklink /J .claude\memory %USERPROFILE%\.claude\projects\<slug>\memory
-
-# Mac/Linux
-ln -s ~/.claude/projects/<slug>/memory .claude/memory
-```
-
-Then add a `captured-memory` source group pointing at `../../.claude/memory/*.md`.
-
-## Why No RAG?
-
-Karpathy's insight: at personal scale (50-500 articles), the LLM reading a structured `index.md` outperforms vector similarity. The LLM understands what you're really asking; cosine similarity just finds similar words. RAG becomes necessary at ~2,000+ articles when the index exceeds the context window.
-
-## Cost
-
-All operations use the [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk) on your existing Claude subscription (Max, Team, or Enterprise). No separate API key needed.
-
-### Per-operation costs
-
-| Operation | Cost | When it runs |
-|-----------|------|-------------|
-| Session flush (`flush.py`) | ~$0.01-0.05 | Every session end (automatic) |
-| Daily compilation (`compile.py`) | ~$0.30-0.80 | Once per day after 6 PM (automatic) |
-| Source ingestion (`ingest.py`) | ~$0.30-0.80/file | Manual only — you control when |
-| Compiled truth generation | **$0.00** | After every compile/ingest (pure Python) |
-| Structural lint | **$0.00** | Manual — pure Python checks |
-| Full lint (with contradictions) | ~$0.15-0.25 | Manual — uses LLM for contradiction detection |
-| Query | ~$0.15-0.40 | Manual |
-
-### Daily cost estimate
-
-With typical usage (10-15 coding sessions per day):
-
-| Component | Cost/day |
-|-----------|----------|
-| Session flushes (10-15 × ~$0.02) | $0.10-0.30 |
-| Daily compilation (1×) | $0.30-0.80 |
-| **Total automatic cost** | **$0.40-1.10/day** |
-
-Source ingestion is manual — you choose when to run it and how many files to process.
-
-### Why costs are stable
-
-The upstream `claude-memory-compiler` has a design flaw: every compile/ingest call dumps **all** existing wiki articles into the prompt. As the knowledge base grows, costs grow linearly — at 71 articles, a single ingestion cost $1.33-4.53 per file.
-
-This fork fixes that. The prompt includes:
-1. **Wiki index** (~one line per article) — grows slowly
-2. **Compiled truth** (~150 words per article) — much smaller than full articles (~800+ words each)
-3. **Tool access** (Read/Grep) — agent fetches specific articles on demand
-
-Cost per operation is approximately constant regardless of knowledge base size.
-
-## Compiled Truth
-
-Instead of dumping all articles into every prompt (expensive, O(n)) or using embeddings/RAG (complex), this fork generates a zero-cost **compiled truth** file with priority-scored article selection.
-
-### Three-Level Retrieval
+## Three-Level Retrieval
 
 | Level | What | Size | Cost |
 |-------|------|------|------|
-| **Level 0: Map** | `index.md` — article slug + one-line description | ~8K chars | Always injected |
-| **Level 1: Essential Truth** | `compiled-truth.md` — top articles by priority score | ~40K chars (configurable) | Always injected |
-| **Level 2: Full Articles** | Individual articles via `query.py` or direct Read | On-demand | Per-query |
+| **Level 0: Map** | `index.md` — slug + one-line description | ~8K chars | Always injected |
+| **Level 1: Truth** | `compiled-truth.md` — top articles by priority | ~40K chars | Always injected |
+| **Level 2: Full** | Individual articles via `/wiki:query` or Read | On-demand | Per-query |
 
 ### Priority Scoring
 
-`compile_truth.py` scores every article and fills a character budget (default 40K) from the highest-scored down. Pinned articles (with `pinned: true` in frontmatter) are always included first.
+`compile_truth.py` scores articles and fills a character budget (default 40K) from highest-scored down. Pinned articles (`pinned: true` in frontmatter) always go first.
 
-**Scoring formula** (non-pinned articles):
+| Signal | Weight | Measures |
+|--------|--------|----------|
+| Recency | 40% | Exponential decay from `updated` date |
+| Linkedness | 35% | Log-scaled inbound `[[wikilinks]]` count |
+| Access | 25% | Log-scaled `query.py` citation count |
 
-| Signal | Weight | What it measures |
-|--------|--------|-----------------|
-| **Recency** | 40% | Exponential decay from `updated` date — today = 1.0, 30 days = 0.40, 90 days = 0.18 |
-| **Linkedness** | 35% | Log-scaled count of inbound `[[wikilinks]]` — more cross-linked = more foundational |
-| **Access frequency** | 25% | Log-scaled count of `query.py` citations — frequently consulted = more useful |
+## Cost
 
-The result: the most important, most connected, most recently updated articles are always in context. At 75 articles, the top 14 fit within 40K chars. As the KB grows to 500+, the same budget automatically selects the best subset — no manual curation needed.
+All operations use the [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk) on your existing Claude subscription. No separate API key needed.
 
-Run `compile_truth.py --verbose` to see the full scoring breakdown for every article.
+| Operation | Cost | Frequency |
+|-----------|------|-----------|
+| Session flush | ~$0.01-0.05 | Every session end (auto) |
+| Daily compilation | ~$0.30-0.80 | Once/day after 6 PM (auto) |
+| Source ingestion | ~$0.30-0.80/file | Manual |
+| Compiled truth | **$0.00** | After every compile/ingest |
+| Structural lint | **$0.00** | Manual |
+| Full lint | ~$0.15-0.25 | Manual |
+| Query | ~$0.15-0.40 | Manual |
 
-### Article Format
+**Daily estimate** (10-15 sessions): **$0.40-1.10/day**
 
-Articles use a **Truth + Timeline** format:
-- **Truth** (top): current facts, dense, machine-extractable
-- **Timeline** (bottom): provenance — when things were learned, from which sources, why decisions changed
+Costs stay constant as the knowledge base grows — the prompt includes an index and compiled truth (fixed size), not all articles.
 
-See [AGENTS.md](AGENTS.md) for the full article schema.
+## Why No RAG?
+
+At personal scale (50-500 articles), the LLM reading a structured index outperforms vector similarity. The LLM understands what you're really asking; cosine similarity just finds similar words. RAG becomes useful at ~2,000+ articles when the index exceeds the context window.
 
 ## Obsidian Integration
 
-The knowledge base is pure markdown with `[[wikilinks]]`. Point an Obsidian vault at `knowledge/` for graph view, backlinks, and search.
+The knowledge base is pure markdown with `[[wikilinks]]`. Point an Obsidian vault at your data directory's `knowledge/` folder for graph view, backlinks, and full-text search.
+
+## Development
+
+To test changes locally:
+
+```bash
+claude --plugin-dir .
+/reload-plugins        # after edits
+```
+
+Check the `/plugin` Errors tab for any loading issues.
 
 ## Technical Reference
 
-See **[AGENTS.md](AGENTS.md)** for the complete technical reference: article formats, hook architecture, script internals, source handler API, cross-platform details, and customization options.
+See [AGENTS.md](AGENTS.md) for the complete article schema, hook architecture, and customization options.
 
 ## Credits
 

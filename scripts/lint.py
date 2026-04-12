@@ -29,7 +29,7 @@ from utils import (
     wiki_article_exists,
 )
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+from config import _DATA_DIR
 
 
 def check_broken_links() -> list[dict]:
@@ -274,7 +274,7 @@ Do NOT output anything else - no preamble, no explanation, just the formatted li
         async for message in query(
             prompt=prompt,
             options=ClaudeAgentOptions(
-                cwd=str(ROOT_DIR),
+                cwd=str(_DATA_DIR),
                 allowed_tools=[],
                 max_turns=2,
             ),

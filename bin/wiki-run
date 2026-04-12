@@ -1,0 +1,6 @@
+#!/bin/bash
+# wiki-run — wrapper that sets up env vars and runs Python scripts via uv.
+# Used by hooks and skills. Placed in bin/ so the plugin system adds it to PATH.
+export WIKI_DATA_DIR="${CLAUDE_PLUGIN_OPTION_DATA_DIR:-$HOME/wiki}"
+export UV_PROJECT_ENVIRONMENT="${CLAUDE_PLUGIN_DATA}/.venv"
+exec uv run --project "${CLAUDE_PLUGIN_ROOT}" python "$@"

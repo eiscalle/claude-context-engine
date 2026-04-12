@@ -19,7 +19,7 @@ from pathlib import Path
 from config import KNOWLEDGE_DIR, QA_DIR, now_iso
 from utils import load_state, read_all_wiki_content, save_state
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+from config import _DATA_DIR
 
 
 async def run_query(question: str, file_back: bool = False) -> str:
@@ -86,7 +86,7 @@ consulting the knowledge base below.
         async for message in query(
             prompt=prompt,
             options=ClaudeAgentOptions(
-                cwd=str(ROOT_DIR),
+                cwd=str(_DATA_DIR),
                 system_prompt={"type": "preset", "preset": "claude_code"},
                 allowed_tools=tools,
                 permission_mode="acceptEdits",

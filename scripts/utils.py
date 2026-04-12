@@ -37,6 +37,7 @@ def load_state() -> dict:
 
 def save_state(state: dict) -> None:
     """Save state to state.json."""
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     STATE_FILE.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 
@@ -105,9 +106,8 @@ def load_sources_config() -> list[SourceGroup]:
 def resolve_source_files(group: SourceGroup, root: Path | None = None) -> list[Path]:
     """Expand include globs and subtract exclude globs. Returns sorted unique paths."""
     import fnmatch
-    from config import ROOT_DIR
 
-    base = root or ROOT_DIR
+    base = root or Path.cwd()
     included: set[Path] = set()
     for pattern in group.include:
         for match in base.glob(pattern):
