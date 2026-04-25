@@ -19,6 +19,13 @@ _PLUGIN_ROOT = Path(
     os.environ.get("CLAUDE_PLUGIN_ROOT", str(Path(__file__).resolve().parent.parent))
 )
 _STATE_DIR = Path.cwd() / ".claude" / "wiki"
+# Ensure state dir exists before any importing hook calls logging.basicConfig
+# against _STATE_DIR / "flush.log". Silently no-op on unwritable filesystems —
+# the hook will surface the underlying error when it actually tries to log.
+try:
+    _STATE_DIR.mkdir(parents=True, exist_ok=True)
+except OSError:
+    pass
 
 SCRIPTS_DIR = _PLUGIN_ROOT / "scripts"
 
