@@ -18,6 +18,14 @@ _PROJECT_ROOT = Path(os.environ.get("WIKI_PROJECT_ROOT", str(Path.cwd())))
 # ── Agent SDK ────────────────────────────────────────────────────────
 AGENT_MODEL = os.environ.get("WIKI_MODEL", "sonnet")
 
+# The spawned Claude Code CLI inherits the user's settings: permission mode
+# (often bypassPermissions), enabled plugins with their subagents, and MCP
+# servers. `allowed_tools` only pre-approves tools and hides nothing, so every
+# agent must pass `tools=` explicitly. These flags additionally drop MCP
+# servers that come from user settings and plugins.
+AGENT_CLI_ARGS = {"strict-mcp-config": None}
+FILE_TOOLS = ["Read", "Write", "Edit", "Glob", "Grep"]
+
 # ── Knowledge base (committed) ───────────────────────────────────────
 KNOWLEDGE_DIR = _PROJECT_ROOT / "wiki"
 CONCEPTS_DIR = KNOWLEDGE_DIR / "concepts"

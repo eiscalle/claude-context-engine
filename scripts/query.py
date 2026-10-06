@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 
-from config import AGENT_MODEL, KNOWLEDGE_DIR, QA_DIR, now_iso
+from config import AGENT_CLI_ARGS, AGENT_MODEL, KNOWLEDGE_DIR, QA_DIR, now_iso
 from utils import load_state, read_all_wiki_content, save_state
 
 from config import _PROJECT_ROOT
@@ -87,8 +87,10 @@ consulting the knowledge base below.
             options=ClaudeAgentOptions(
                 cwd=str(_PROJECT_ROOT),
                 system_prompt={"type": "preset", "preset": "claude_code"},
+                tools=tools,
                 allowed_tools=tools,
                 permission_mode="acceptEdits",
+                extra_args=AGENT_CLI_ARGS,
                 max_turns=15,
                 model=AGENT_MODEL,
             ),

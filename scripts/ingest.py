@@ -20,7 +20,16 @@ import asyncio
 import sys
 from pathlib import Path
 
-from config import AGENT_MODEL, AGENTS_FILE, CONCEPTS_DIR, CONNECTIONS_DIR, KNOWLEDGE_DIR, now_iso
+from config import (
+    AGENT_CLI_ARGS,
+    AGENT_MODEL,
+    AGENTS_FILE,
+    CONCEPTS_DIR,
+    CONNECTIONS_DIR,
+    FILE_TOOLS,
+    KNOWLEDGE_DIR,
+    now_iso,
+)
 from source_handlers import get_handler
 from utils import (
     SourceGroup,
@@ -203,8 +212,10 @@ architectural patterns.
             options=ClaudeAgentOptions(
                 cwd=str(_PROJECT_ROOT),
                 system_prompt={"type": "preset", "preset": "claude_code"},
-                allowed_tools=["Read", "Write", "Edit", "Glob", "Grep"],
+                tools=FILE_TOOLS,
+                allowed_tools=FILE_TOOLS,
                 permission_mode="bypassPermissions",
+                extra_args=AGENT_CLI_ARGS,
                 max_turns=30,
                 model=AGENT_MODEL,
             ),

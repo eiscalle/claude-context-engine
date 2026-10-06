@@ -25,7 +25,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from config import AGENT_MODEL, DAILY_DIR, KNOWLEDGE_DIR, SCRIPTS_DIR, _PLUGIN_ROOT, _STATE_DIR
+from config import AGENT_CLI_ARGS, AGENT_MODEL, DAILY_DIR, KNOWLEDGE_DIR, SCRIPTS_DIR, _PLUGIN_ROOT, _STATE_DIR
 from utils import file_hash, migrate_state_schema
 
 STATE_FILE = _STATE_DIR / "last-flush.json"
@@ -171,7 +171,9 @@ respond with exactly: FLUSH_OK
             prompt=prompt,
             options=ClaudeAgentOptions(
                 cwd=str(KNOWLEDGE_DIR.parent),
-                allowed_tools=[],
+                tools=[],
+                permission_mode="default",
+                extra_args=AGENT_CLI_ARGS,
                 max_turns=2,
                 model=AGENT_MODEL,
             ),

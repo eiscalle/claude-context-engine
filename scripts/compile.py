@@ -20,11 +20,13 @@ from pathlib import Path
 
 from compile_lock import compilation_lock
 from config import (
+    AGENT_CLI_ARGS,
     AGENT_MODEL,
     AGENTS_FILE,
     CONCEPTS_DIR,
     CONNECTIONS_DIR,
     DAILY_DIR,
+    FILE_TOOLS,
     KNOWLEDGE_DIR,
     _PROJECT_ROOT,
     _STATE_DIR,
@@ -143,8 +145,10 @@ Read the daily log above and compile it into wiki articles following the schema 
             options=ClaudeAgentOptions(
                 cwd=str(_PROJECT_ROOT),
                 system_prompt={"type": "preset", "preset": "claude_code"},
-                allowed_tools=["Read", "Write", "Edit", "Glob", "Grep"],
+                tools=FILE_TOOLS,
+                allowed_tools=FILE_TOOLS,
                 permission_mode="bypassPermissions",
+                extra_args=AGENT_CLI_ARGS,
                 max_turns=30,
                 model=AGENT_MODEL,
             ),

@@ -14,7 +14,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 
-from config import AGENT_MODEL, KNOWLEDGE_DIR, REPORTS_DIR, now_iso, today_iso
+from config import AGENT_CLI_ARGS, AGENT_MODEL, KNOWLEDGE_DIR, REPORTS_DIR, now_iso, today_iso
 from utils import (
     count_inbound_links,
     extract_wikilinks,
@@ -285,7 +285,9 @@ Do NOT output anything else - no preamble, no explanation, just the formatted li
             prompt=prompt,
             options=ClaudeAgentOptions(
                 cwd=str(_PROJECT_ROOT),
-                allowed_tools=[],
+                tools=[],
+                permission_mode="default",
+                extra_args=AGENT_CLI_ARGS,
                 max_turns=2,
                 model=AGENT_MODEL,
             ),
